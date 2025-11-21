@@ -3442,13 +3442,13 @@ EOF
             if [ -f $os_dir/etc/apt/sources.list.d/debian.sources ]; then
                 cat <<EOF >$os_dir/etc/apt/sources.list.d/debian.sources
 Types: deb
-URIs: http://$deb_mirror
+URIs: https://$deb_mirror
 Suites: $codename
 Components: $comps
 Signed-By: /etc/apt/trusted.gpg.d/freexian-archive-extended-lts.gpg
 EOF
             else
-                echo "deb http://$deb_mirror $codename $comps" >$os_dir/etc/apt/sources.list
+                echo "deb https://$deb_mirror $codename $comps" >$os_dir/etc/apt/sources.list
             fi
         else
             # non-ELTS
@@ -4427,7 +4427,7 @@ install_qcow_by_copy() {
                     mirror=vault.centos.org
                 fi
                 sed -Ei -e 's,(mirrorlist=),#\1,' \
-                    -e "s,#(baseurl=http://)mirror.centos.org,\1$mirror," /os/etc/yum.repos.d/CentOS-Base.repo
+                    -e "s,#(baseurl=https://)mirror.centos.org,\1$mirror," /os/etc/yum.repos.d/CentOS-Base.repo
             fi
 
             # el7 yum 可能会使用 ipv6，即使没有 ipv6 网络
@@ -5498,7 +5498,7 @@ get_cloud_vendor() {
     # busybox blkid 不显示 sr0 的 UUID
     apk add lsblk
 
-    # http://git.annexia.org/?p=virt-what.git;a=blob;f=virt-what.in;hb=HEAD
+    # https://git.annexia.org/?p=virt-what.git;a=blob;f=virt-what.in;hb=HEAD
     # virt-what 可识别厂商 aws google_cloud alibaba_cloud alibaba_cloud-ebm
     if is_dmi_contains "Amazon EC2" || is_virt_contains aws; then
         echo aws
@@ -6237,11 +6237,11 @@ EOF
 
     # 9.3.1
     # https://downloads.xenserver.com/vm-tools-windows/9.3.1/managementagentx64.msi
-    # http://downloadns.citrix.com.edgesuite.net/17461/managementagentx64.msi
+    # https://downloadns.citrix.com.edgesuite.net/17461/managementagentx64.msi
 
     # 7.2.0.1555
-    # http://downloadns.citrix.com.edgesuite.net/14656/managementagentx64.msi
-    # http://downloadns.citrix.com.edgesuite.net/14655/managementagentx86.msi
+    # https://downloadns.citrix.com.edgesuite.net/14656/managementagentx64.msi
+    # https://downloadns.citrix.com.edgesuite.net/14655/managementagentx86.msi
 
     # xen
     # 没签名，暂时用aws的驱动代替
@@ -6964,7 +6964,7 @@ get_ubuntu_kernel_flavor() {
 
     # https://github.com/systemd/systemd/blob/main/src/basic/virt.c
     # https://github.com/canonical/cloud-init/blob/main/tools/ds-identify
-    # http://git.annexia.org/?p=virt-what.git;a=blob;f=virt-what.in;hb=HEAD
+    # https://git.annexia.org/?p=virt-what.git;a=blob;f=virt-what.in;hb=HEAD
     if [ "$releasever" = 16.04 ]; then
         if is_virt; then
             echo virtual-hwe-$releasever
@@ -7250,7 +7250,7 @@ mount / -o remount,size=100%
 # 同步时间
 # 1. 可以防止访问 https 出错
 # 2. 可以防止 https://github.com/bin456789/reinstall/issues/223
-#    E: Release file for http://security.ubuntu.com/ubuntu/dists/noble-security/InRelease is not valid yet (invalid for another 5h 37min 18s).
+#    E: Release file for https://security.ubuntu.com/ubuntu/dists/noble-security/InRelease is not valid yet (invalid for another 5h 37min 18s).
 #    Updates for this repository will not be applied.
 # 3. 不能直接读取 rtc，因为默认情况 windows rtc 是本地时间，linux rtc 是 utc 时间
 # 4. 允许同步失败，因为不是关键步骤
