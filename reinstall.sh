@@ -5,7 +5,7 @@
 set -eE
 confhome=https://raw.githubusercontent.com/Flurando/reinstall/safe
 confhome_cn=$confhome
-location=US # change to CN if the server is in China
+server_location=US # change to CN if the server is in China
 
 # 用于判断 reinstall.sh 和 trans.sh 是否兼容
 SCRIPT_VERSION=4BACD833-A585-23BA-6CBB-9AA4E08E0004
@@ -182,7 +182,7 @@ is_in_china() {
     [ "$force_cn" = 1 ] && return 0
 
     if [ -z "$_loc" ]; then
-	_loc=$location
+	_loc=$server_location
         echo "Location: $_loc" >&2
     fi
     [ "$_loc" = CN ]
