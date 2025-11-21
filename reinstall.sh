@@ -4237,9 +4237,6 @@ fi
 if is_in_china; then
     if [ -n "$confhome_cn" ]; then
         confhome=$confhome_cn
-    elif [ -n "$github_proxy" ] && [[ "$confhome" = http*://raw.githubusercontent.com/* ]]; then
-        confhome=${confhome/http:\/\//https:\/\/}
-        confhome=${confhome/https:\/\/raw.githubusercontent.com/$github_proxy}
     fi
 fi
 
