@@ -5,6 +5,7 @@
 set -eE
 confhome=https://raw.githubusercontent.com/Flurando/reinstall/safe
 confhome_cn=$confhome
+location=US # change to CN if the server is in China
 
 # 用于判断 reinstall.sh 和 trans.sh 是否兼容
 SCRIPT_VERSION=4BACD833-A585-23BA-6CBB-9AA4E08E0004
@@ -64,10 +65,10 @@ Usage: $reinstall_____ anolis      7|8|23
                        gentoo
                        aosc
                        fnos
-                       redhat      --img="http://access.cdn.redhat.com/xxx.qcow2"
-                       dd          --img="http://xxx.com/yyy.zzz" (raw image stores in raw/vhd/tar/gz/xz/zst)
+                       redhat      --img="https://access.cdn.redhat.com/xxx.qcow2"
+                       dd          --img="https://xxx.com/yyy.zzz" (raw image stores in raw/vhd/tar/gz/xz/zst)
                        windows     --image-name="windows xxx yyy" --lang=xx-yy
-                       windows     --image-name="windows xxx yyy" --iso="http://xxx.com/xxx.iso"
+                       windows     --image-name="windows xxx yyy" --iso="https://xxx.com/xxx.iso"
                        netboot.xyz
 
        Options:        For Linux/Windows:
@@ -181,16 +182,7 @@ is_in_china() {
     [ "$force_cn" = 1 ] && return 0
 
     if [ -z "$_loc" ]; then
-        # www.cloudflare.com/dash.cloudflare.com 国内访问的是美国服务器，而且部分地区被墙
-        # 没有ipv6 www.visa.cn
-        # 没有ipv6 www.bose.cn
-        # 没有ipv6 www.garmin.com.cn
-        # 备用 www.prologis.cn
-        # 备用 www.autodesk.com.cn
-        # 备用 www.keysight.com.cn
-        if ! _loc=$(curl -L http://www.qualcomm.cn/cdn-cgi/trace | grep '^loc=' | cut -d= -f2 | grep .); then
-            error_and_exit "Can not get location."
-        fi
+	_loc=$location
         echo "Location: $_loc" >&2
     fi
     [ "$_loc" = CN ]
@@ -1156,11 +1148,11 @@ setos() {
     setos_alpine() {
         is_virt && flavour=virt || flavour=lts
 
-        # 不要用https 因为甲骨文云arm initramfs阶段不会从硬件同步时钟，导致访问https出错
+        # 不支持甲骨文云，因为甲骨文云arm initramfs阶段不会从硬件同步时钟，导致访问https出错
         if is_in_china; then
-            mirror=http://mirror.nju.edu.cn/alpine/v$releasever
+            mirror=https://mirror.nju.edu.cn/alpine/v$releasever
         else
-            mirror=http://dl-cdn.alpinelinux.org/alpine/v$releasever
+            mirror=https://dl-cdn.alpinelinux.org/alpine/v$releasever
         fi
         eval ${step}_vmlinuz=$mirror/releases/$basearch/netboot/vmlinuz-$flavour
         eval ${step}_initrd=$mirror/releases/$basearch/netboot/initramfs-$flavour
@@ -1288,7 +1280,7 @@ Continue?
                 hostname=kali.download
             fi
             codename=kali-rolling
-            mirror=http://$hostname/kali/dists/$codename/main/installer-$basearch_alt/current/images/netboot/debian-installer/$basearch_alt
+            mirror=https://$hostname/kali/dists/$codename/main/installer-$basearch_alt/current/images/netboot/debian-installer/$basearch_alt
 
             is_virt && flavour=-cloud || flavour=
 
@@ -1393,7 +1385,9 @@ Continue?
                 mirror=https://mirror.nju.edu.cn/archlinuxarm
             else
                 # https 证书有问题
-                mirror=http://mirror.archlinuxarm.org # geoip
+		echo 不支持arm安装arch，因为https证书有问题
+		exit 1
+                mirror=https://mirror.archlinuxarm.org # geoip
             fi
         fi
 
@@ -1520,7 +1514,7 @@ Continue?
                 grep -Eiq '\.gravesoft\.dev/#[0-9]+$' <<<"$iso"; then
                 info "Set Direct link"
                 # MobaXterm 不支持
-                # printf '\e]8;;http://example.com\e\\This is a link\e]8;;\e\\\n'
+                # printf '\e]8;;https://example.com\e\\This is a link\e]8;;\e\\\n'
 
                 # MobaXterm 不显示为超链接
                 # info false "请在浏览器中打开 $iso 获取直链并粘贴到这里。"
@@ -2861,7 +2855,7 @@ download_and_extract_apk() {
     local extract_dir=$3
 
     install_pkg tar xz
-    is_in_china && mirror=http://mirror.nju.edu.cn/alpine || mirror=https://dl-cdn.alpinelinux.org/alpine
+    is_in_china && mirror=https://mirror.nju.edu.cn/alpine || mirror=https://dl-cdn.alpinelinux.org/alpine
     package_apk=$(curl -L $mirror/v$alpine_ver/main/$basearch/ | grep -oP "$package-[^-]*-[^-]*\.apk" | sort -u)
     if ! [ "$(wc -l <<<"$package_apk")" -eq 1 ]; then
         error_and_exit "find no/multi apks."
@@ -2933,7 +2927,7 @@ install_grub_win() {
             # g2ldr.mbr
             # 部分国内机无法访问 ftp.cn.debian.org
             is_in_china && host=mirror.nju.edu.cn || host=deb.debian.org
-            curl -LO http://$host/debian/tools/win32-loader/stable/win32-loader.exe
+            curl -LO https://$host/debian/tools/win32-loader/stable/win32-loader.exe
             7z x win32-loader.exe 'g2ldr.mbr' -o$tmp/win32-loader -r -y -bso0
             find $tmp/win32-loader -name 'g2ldr.mbr' -exec cp {} /cygdrive/$c/ \;
 
@@ -3273,11 +3267,11 @@ EOF
         case "$type" in
         deb)
             local mirror=$nextos_deb_mirror
-            local url=http://$mirror/dists/$nextos_codename/main/binary-$basearch_alt/Packages.gz
+            local url=https://$mirror/dists/$nextos_codename/main/binary-$basearch_alt/Packages.gz
             ;;
         udeb)
             local mirror=$nextos_udeb_mirror
-            local url=http://$mirror/dists/$nextos_codename/main/debian-installer/binary-$basearch_alt/Packages.gz
+            local url=https://$mirror/dists/$nextos_codename/main/debian-installer/binary-$basearch_alt/Packages.gz
             ;;
         esac
 
@@ -3289,7 +3283,7 @@ EOF
 
         # 下载 deb/udeb
         deb_path=$(grep -F "/${package}_" "$deb_list")
-        curl -Lo $tmp/tmp.deb http://$mirror/"$deb_path"
+        curl -Lo $tmp/tmp.deb https://$mirror/"$deb_path"
 
         if false; then
             # 使用 dpkg
@@ -3951,7 +3945,7 @@ while true; do
         [ -n "$2" ] || error_and_exit "Need value for $1"
 
         case "$(to_lower <<<"$2")" in
-        http://* | https://*)
+        https://* | https://*)
             frpc_config_url=$2
             frpc_config=$tmp/frpc_config
             if ! curl -L "$frpc_config_url" -o "$frpc_config"; then
@@ -3993,7 +3987,7 @@ Available options:
   --ssh-key "ecdsa-sha2-nistp256/384/521 ..."
   --ssh-key github:your_username
   --ssh-key gitlab:your_username
-  --ssh-key http://path/to/public_key
+  --ssh-key https://path/to/public_key
   --ssh-key https://path/to/public_key
   --ssh-key /path/to/public_key
   --ssh-key C:\path\to\public_key
@@ -4009,7 +4003,7 @@ EOF
         [ -n "$2" ] || ssh_key_error_and_exit "Need value for $1"
 
         case "$(to_lower <<<"$2")" in
-        github:* | gitlab:* | http://* | https://*)
+        github:* | gitlab:* | https://* | https://*)
             if [[ "$(to_lower <<<"$2")" = http* ]]; then
                 key_url=$2
             else
@@ -4626,12 +4620,12 @@ elif [ "$distro" = fnos ]; then
     echo "Special note for FNOS:"
     echo "Reboot to start the installation."
     echo "SSH login is disabled when installation completed."
-    echo "You need to config the account and password on http://SERVER_IP:5666 as soon as possible."
+    echo "You need to config the account and password on https://SERVER_IP:5666 as soon as possible."
     echo
     echo "飞牛 OS 注意事项："
     echo "重启后开始安装。"
     echo "安装完成后不支持 SSH 登录。"
-    echo "你需要尽快在 http://SERVER_IP:5666 配置账号密码。"
+    echo "你需要尽快在 https://SERVER_IP:5666 配置账号密码。"
 else
     echo "Reboot to start the installation."
 fi
