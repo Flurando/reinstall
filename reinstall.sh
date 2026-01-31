@@ -3,7 +3,7 @@
 # shellcheck disable=SC2086
 
 set -eE
-confhome=https://raw.githubusercontent.com/Flurando/reinstall/safe
+confhome=https://raw.githubusercontent.com/Flurando/reinstall/safe-ipv4-only
 confhome_cn=$confhome
 server_location=US # change to CN if the server is in China
 
