@@ -8,7 +8,6 @@
 mac_addr=$1
 ipv4_addr=$2
 ipv4_gateway=$3
-is_in_china=$6
 
 DHCP_TIMEOUT=15
 DNS_FILE_TIMEOUT=5
@@ -46,12 +45,6 @@ get_ipv4_gateway() {
     # debian 11 initrd 没有 xargs awk
     # debian 12 initrd 没有 xargs
     ip -4 route show default dev "$ethx" | head -1 | cut -d ' ' -f3
-}
-
-get_ipv6_gateway() {
-    # debian 11 initrd 没有 xargs awk
-    # debian 12 initrd 没有 xargs
-    ip -6 route show default dev "$ethx" | head -1 | cut -d ' ' -f3
 }
 
 get_first_ipv4_addr() {
@@ -173,20 +166,18 @@ test_connect() {
 }
 
 test_internet() {
-    for i in $(seq 5); do
-        echo "Testing Internet Connection. Test $i... "
-        if is_need_test_ipv4 &&
+    echo "Testing Internet Connection. Test... "
+    if is_need_test_ipv4 &&
             current_ipv4_addr="$(get_first_ipv4_addr | remove_netmask)" &&
+	    echo $current_ipv4_addr
             { test_connect "$current_ipv4_addr" "$ipv4_dns1" ||
-                test_connect "$current_ipv4_addr" "$ipv4_dns2"; } >/dev/null 2>&1; then
-            echo "IPv4 has internet."
-            ipv4_has_internet=true
-        fi
-        if ! is_need_test_ipv4; then
-            break
-        fi
-        sleep 1
-    done
+                  test_connect "$current_ipv4_addr" "$ipv4_dns2"; } >/dev/null 2>&1; then
+        echo "IPv4 has internet."
+        ipv4_has_internet=true
+    fi
+    if ! is_need_test_ipv4; then
+        break
+    fi
 }
 
 flush_ipv4_config() {
@@ -273,73 +264,11 @@ else
     esac
 fi
 
-# 记录是否有动态地址
-# 由于还没设置静态ip，所以有条目表示有动态地址
-is_have_ipv4_addr && dhcpv4=true || dhcpv4=false
-
-# 如果自动获取的 IP 不是重装前的，则改成静态，使用之前的 IP
-# 只比较 IP，不比较掩码/网关，因为
-# 1. 假设掩码/网关导致无法上网，后面也会检测到并改成静态
-# 2. openSUSE wicked dhcpv6 是 64 位掩码，aws lightsail 模板上的也是，而其它 dhcpv6 软件都是 128 位掩码
-if $dhcpv4 && [ -n "$ipv4_addr" ] && [ -n "$ipv4_gateway" ] &&
-    ! [ "$(echo "$ipv4_addr" | cut -d/ -f1)" = "$(get_first_ipv4_addr | cut -d/ -f1)" ]; then
-    echo "IPv4 address obtained from DHCP is different from old system."
-    should_disable_dhcpv4=true
-    flush_ipv4_config
-fi
-
-# 设置静态地址，或者设置 debian 9 udhcpc 无法设置的网关
-add_missing_ipv4_config
-
-# 检查 ipv4/ipv6 是否连接联网
-ipv4_has_internet=false
-test_internet
-
-# 如果无法上网，并且自动获取的 掩码/网关 不是重装前的，则改成静态
-# ip_addr 包括 IP/掩码，所以可以用来判断掩码是否不同
-# IP 不同的情况在前面已经改成静态了
-if ! $ipv4_has_internet &&
-    $dhcpv4 && [ -n "$ipv4_addr" ] && [ -n "$ipv4_gateway" ] &&
-    ! { [ "$ipv4_addr" = "$(get_first_ipv4_addr)" ] && [ "$ipv4_gateway" = "$(get_first_ipv4_gateway)" ]; }; then
-    echo "IPv4 netmask/gateway obtained from DHCP is different from old system."
-    should_disable_dhcpv4=true
-    flush_ipv4_config
-    add_missing_ipv4_config
-    test_internet
-fi
-
-# 要删除不联网协议的ip，因为
-# 1 甲骨文云管理面板添加ipv6地址然后取消
-#   依然会分配ipv6地址，但ipv6没网络
-#   此时alpine只会用ipv6下载apk，而不用会ipv4下载
-# 2 有ipv4地址但没有ipv4网关的情况(vultr $2.5 ipv6 only)，aria2会用ipv4下载
-
-# 假设 ipv4 ipv6 在不同网卡，ipv4 能上网但 ipv6 不能上网，这时也要删除 ipv6
-# 不能用 ipv4_has_internet && ! ipv6_has_internet 判断，因为它判断的是同一个网卡
-if ! $ipv4_has_internet; then
-    if $dhcpv4; then
-        should_disable_dhcpv4=true
-    fi
-    flush_ipv4_config
-fi
-
-# 如果联网了，但没获取到默认 DNS，则添加我们的 DNS
-
-# 有一种情况是，多网卡，且能上网的网卡先完成了这个脚本，不能上网的网卡后完成
-# 无法上网的网卡通过 flush_ipv4_config 删除了不能上网的 IP 和 dns
-# （原计划是删除无法上网的网卡 dhcp4 获取的 dns，但实际上无法区分）
-# 因此这里直接添加 dns，不判断是否联网
-if ! is_have_ipv4_dns; then
-    echo "nameserver $ipv4_dns1" >>/etc/resolv.conf
-    echo "nameserver $ipv4_dns2" >>/etc/resolv.conf
-fi
-
 # 传参给 trans.start
 netconf="/dev/netconf/$ethx"
 mkdir -p "$netconf"
 $dhcpv4 && echo 1 >"$netconf/dhcpv4" || echo 0 >"$netconf/dhcpv4"
 $should_disable_dhcpv4 && echo 1 >"$netconf/should_disable_dhcpv4" || echo 0 >"$netconf/should_disable_dhcpv4"
-$is_in_china && echo 1 >"$netconf/is_in_china" || echo 0 >"$netconf/is_in_china"
 echo "$ethx" >"$netconf/ethx"
 echo "$mac_addr" >"$netconf/mac_addr"
 echo "$ipv4_addr" >"$netconf/ipv4_addr"
